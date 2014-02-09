@@ -1,0 +1,125 @@
+=========================================
+Rethinking this project entirely again for milestone_4...
+=========================================
+
+During the development of milestone 3 (the offensive PoC), I thought that the 
+defensive position would be to directly attest the main CPU to discern if the kernel
+was lying about the utilization and the current processor speeds. After many trials 
+and errors along this path, I stopped to reconsider the problem.  Any attempt I made to 
+directly catch the offensive PoC was trivially bypassed, mostly because at the end of the day I was using the same mechanisms on both parts of the problem.
+
+Revisiting the academic research on attestation and remote attestation, I realized 
+that the full and complete problem was VERY hard and no where near functional (enough to catch
+my PoC) currently. I needed a new approach that didn't rely upon the same design as the 
+offensive tool. This mindset is how the Attestify module was born.
+
+In principle, the module is fairly simple and direct. The approach taken is to generate simple metrics for CPU core processing and to analyze those metrics across different temporal processing scopes. The end result is a metric of percent variance over standard deviation from the mean of known processing times.  
+
+Simply put, we run a process numerous times and discover how long the calculations “should” take. We then determine what the variance from that average / mean is and with this standardized deviation metric we can flag process states that are shifting out of the norm.  This approach also allows us to remove obvious outliers and focus on the more subtle changes that the milestone 3 offensive PoC showcases.
+
+There is a colossal amount of research on high-end and functional attestation routines that are decidedly more complex (and probably better) than the Attestify solution, but the whole intent of the project was to prove the capability and need of attestation, not to directly solve the problem fully.
+
+Lower level details of this tool are contained below.
+
+=========================================
+attestify source code structure:
+=========================================
+	This structure is a simple as it could be. A single file (clb_attestify.c) contains the entire runtime of the module.
+
+=========================================
+building attestify and running:
+=========================================
+	In the AOKP source tree, create a directory for kernel modules.  Mine was here:
+		<AOKP BASE>/kernel/sony/apq8064/modules/attestify/
+	and then copy the attestify source (clb_attestify.c & Makefile) into the directory.
+
+	Once the file is in place, simple call on the command line in that directory.
+		make clean; make
+
+	If you have any issues, please check that your paths and directory structures match my Makefile,
+	if not, please edit the makefile so that they do.
+
+	Once you have the attestify.ko module compiled, simply "adb push" it onto the device and "insmod" it into the running system.
+	(You will need to ensure the directory you pushed it to is R/W/X).
+
+	All program logging is done to the standard linux kernel log, so you will need to be monitoring kmsg to see the output.
+
+=========================================
+attestify functionality (overview):
+=========================================
+
+	Attestify simply attempts to analyze the Android runtime from a low level processor perspective.
+
+	The outer shell of the code simply loops a set number of time through the CPU validation code .
+
+	The CPU validation code runs a series of CPU processing analysis loops designated as:
+		* Short
+		* Medium
+		* Long
+
+	Each of these loops is designed to control and utilize the CPU core in a different manner.  All of the loops
+	record processing time and other metrics, with the end result being a collection of averages, standard deviation 
+	figures and a percentage of variance over the dataset. These calculations can be used to detect and discover 
+	abnormal behavior of the CPU over time.
+
+=========================================
+attestify functionality (details):
+=========================================
+
+— Notes on the looping structure —
+
+	The outer loop of Attestify simply repeats the contained tests a set amount of times.  This loop is controlled in 
+	source by the define: ATTESTIFY_TEST_LOOP_COUNTER (currently set to loop 100 times).
+
+	For each outer processing loop,  Attestify runs a series of CPU manipulation routines. The number of times this set of routines 
+	are run is controlled by a define in the source: ATTESTIFY_PROCESS_LOOP_COUNTER (currently set to loop 100 times).
+
+	Finally, each manipulation routine is actually a looped process of discrete calculations.  The number of times each calculation 
+	is run is determined by the ATTESTIFY_CALC_LOOP_COUNTER define. (This value is currently set to 10,000).
+
+	So simply, the 3 loops are controlled thus:
+
+		ATTESTIFY_TEST_LOOP_COUNTER 		-> The number of times the entire test suite is run
+		ATTESTIFY_PROCESS_LOOP_COUNTER	-> The number of times each test is run inside the test suite
+		ATTESTIFY_CALC_LOOP_COUNTER		-> The number of times each test calculation is run inside each test.
+
+	This nested structure is far from efficient, but does allow for flexibility and ease of modification when exploring the PoC as a test tool.
+	The loops can also be controlled with simple sleep commands to space out and even the calculations across the temporal landscape.
+
+— Notes on the CPU calculation routines —
+
+	As stated previously, each “test” is actually a series of 3 discrete sub test segments.  These calculations are denoted by the time they take to process, 
+	namely SHORT_TEST_MODE, MEDIUM_TEST_MODE and LONG_TEST_MODE.
+
+	SHORT_TEST_MODE simply loops through a simplistic math problem that should take VERY few (<10) processor cycles to complete.  The intent of this test 
+	is to measure very small, controlled bursts of calculations that should always complete before the processor is required to context switch. The mean and standard
+	deviation for this test are generally approaching 0. The problem with variance here is that the processor is generally SO fast at calculating (sub nanosecond), that almost
+	all of the loops take “0 time”. When a loop does straddle the nanosecond barrier, it tends to skew the standard deviation immensely. Red flags that should be noted for this 
+	test are if the numbers jump VERY large. Typically the deviation or mean delta is between 0-30, but if it jumps into the 100’s for more than 1 loop, there is a high probability
+	the CPU is improperly threading processes or improperly context shifting.
+	
+	MEDIUM_TEST_MODE simply loops through a contrived and predetermined set of short factorial calculations. This mode is expected to take between 10 and 100 processor 
+	cycles per calculation, and thus takes considerable longer to process. This lengthening of the temporal plane somewhat smoothes the standard deviation spikes seen in the 
+	SHORT_TEST_MODE. Variance away from a low standard deviation typically means the processor context shifted more times than the average or was locked into another process
+	longer than expected. Similar to the prior mode, we are looking for large trends in deviation instead of individual outlier test runs.
+
+	LONG_TEST_MODE loops through a set of collate conjecture sequences and calculations. Each test case in this mode is expected to take considerably more than 100 processor 
+	cycles to complete. Variance that was smoothed in the medium mode is now chaotic again, as the test cases almost certainly take long enough that the processor context switches 
+	during the calculations. Given the uncertainty of the switching routines, we are looking for outlier trends in this mode. 
+
+— Notes on the math and pseudo math involved —
+	
+	The mean is calculated based on per test case loop time deltas. Time (measured in nanoseconds) is recorded from start to end of the actual calculations (not including loop, variable and 
+	other setup processing). This delta value is then averaged into the mean time for each processing loop.
+
+	The standard deviation is then classically calculated based on the time delta records and the mean processing for each test case loop.
+
+	The standard deviation percentage is a non scientific metric generated from considering the standard deviation OVER the mean.  This provides the software with a relatively smooth metric
+	to compare against the divergent test cases for tracking and tracing. This is not a typically accepted probability or statistics metric, but is useful in the case of Attestify for quick comparison
+	across calculation routines and across test case loops.
+
+=========================================
+Random useful commands:
+=========================================
+ To enable RW on the YUGA system partition, use the following command:
+ 	mount -o rw,remount /dev/block/mmcblk0p24 /system

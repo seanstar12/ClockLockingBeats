@@ -1,0 +1,19 @@
+=========================================
+To recompile for Android, you need the NDK
+Pull it down, then build the toolchain:
+
+m0nk@m0nk-linux-xps13:~/lib/android-18-ndk-toolchain/bin$ pwd
+/home/m0nk/lib/android-18-ndk-toolchain/bin
+
+m0nk@m0nk-linux-xps13:~/lib/android-18-ndk-toolchain/bin$ ./build/tools/make-standalone-toolchain.sh --platform=android-18 --install-dir=/home/m0nk/lib/android-18-ndk-toolchain
+
+Once the toolchain is there, simply reference it in the make files:
+CC=/home/m0nk/lib/android-18-ndk-toolchain/bin/arm-linux-androideabi-gcc
+
+make clean and make, should be golden!
+
+NOTE: These paths will need to change to match your machine. The make files for clb_offensive_android will also need to be updated to point to your dir. Please edit:
+	./clb_offensive_android/oc-me/Makefile
+	./clb_offensive_android/collatz-kit/Makefile
+	./clb_offensive_android/cpulimit-simplified/Makefile
+=========================================

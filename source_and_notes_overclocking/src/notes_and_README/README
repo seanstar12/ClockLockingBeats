@@ -1,0 +1,22 @@
+=========================================
+Overall notes:
+=========================================
+These files attached are possibly the simplest form of overclocking Android a person could attempt.
+My old notes on this process are included in the "backup" files, but in general this source simply increases every speed and related voltage value by roughly 10%. We see a 10% gain during runtime, though the device can be unstable... 
+
+There are better overclocking tools on the market, and the shim concept mentioned in old notes is probably the best avenue to consider if weaponizing this functionality. This stub is simply meant to showcase that overclocking is trivial and relatively simplistic
+=========================================
+
+=========================================
+=========================================
+
+=========================================
+=========================================
+
+=========================================
+=========================================
+
+=========================================
+=========================================
+=========================================
+

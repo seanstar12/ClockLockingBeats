@@ -1,0 +1,54 @@
+=========================================
+PreReqs
+=========================================
+1) (Build Machine) Ensure you have built the clb_offensive_android programs and staged them in clb_out
+	$ make; make stage-kit
+
+2) (Test Android Device) Ensure you have root access via ADB
+	$ whoami
+	$ root
+
+3) (Test Android Device) Make the required directory structure for the implant files
+	$ mkdir /data/data/com.omg-pwnies.clb
+=========================================
+
+=========================================
+Installing the kit
+=========================================
+1) (Build Machine) ADB push the files from clb_out onto the device in the correct place
+	$ adb push collatz-kit /data/data/com.omg-pwnies.clb/
+	$ adb push cpulimit-simplified /data/data/com.omg-pwnies.clb/
+	$ adb push oc-me /data/data/com.omg-pwnies.clb/
+=========================================
+
+=========================================
+Running the kit
+=========================================
+1) (Build Machine) Open 3 terminal ADB sessions into the phone
+
+2) (Test Android Device) In the 1st terminal, simply run TOP so we can monitor the output
+	$ top -m 5 -d 1
+
+3) (Test Android Device) In the 2nd terminal, simply run the collatz-kit program
+	$ cd /data/data/com.omg-pwnies.clb/
+	$ ./collatz-kit
+	
+4) (Test Android Device) In the first terminal, you should see 'collatz.kit' show up on top & make note of the PID for collatz-kit. (I tend to see the raw collatz-kit use between 12% to 200% of the CPU... but it seems to always drift towards 50% )
+	
+5) (Test Android Device) In the 3rd terminal, run the cpulimit-simplified to lock the imaplnt to a requested utilization percentage. 
+	$ cd /data/data/com.omg-pwnies.clb
+	$ ./cpulimit-simplified -l 10 -p <THE_COLLATZ-KIT_PID>
+		
+6) (Test Android Device) In the 1st terminal, verify that the collatz-kit is now only using the % utilization set by step 5.
+=========================================
+
+=========================================
+Killing the kit
+=========================================
+You should
+	$ kill <PID>
+the collatz-kit and play aournd with different % utilization values.  I tried to test with most values between 2 and 20.
+=========================================
+
+=========================================
+=========================================

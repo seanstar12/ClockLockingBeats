@@ -1,0 +1,115 @@
+=========================================
+High level overview:
+=========================================
+What we are trying to prove here is that an advanced nefarious tool can overclock the device by a specific percentage and then lock the runtime of the implanted code to that processing delta. The attached tools do that quite well IMHO.
+
+We have a sample kit or implant that uses a large ammount of system resources when unbounded.
+We have a known framework for overclocking these devices to a specified percentage.
+We have a sample tool that will limit the processor utilization of a program or thread by a defined percentage.
+
+These tools in combination, allow the research to demonstrate that it is possible (and almost trivial) to fully hide and negate any noticable runtime effects of rouge software on a target device.
+
+=========================================
+What isn't includede here:
+=========================================
+As we have talked about in the past, I have no real interest in building a complete weapon.  As such, the overclocking task is left as a stub. There are numerous tools on the market already and it is known research.
+I also didn't include a stand-alone, 1 button click wrapper to deploy and run this code. Such a program would be trivial to generate, but would weaponize this concept directly.  This task is left to the read if such functionality is desired.
+
+The clb_offensive_android source tree is described in the rest of these notes.
+The clb_offensive_mac_linux source and tool works the same way as the Android variant, and is simply included because I thought it was cool to "port it"
+=========================================
+
+=========================================
+clb_offensive source code structure:
+=========================================
+* clb_out 				      -> This is the staged directoy with all the compiled progrms and the runner script
+* collatz-kit			      -> This is our sample "implant" / "kit"
+* cpulimit-simplified 	-> This is the modified open source project for cpulimit
+* oc-me					        -> This is the wrapper program that kicks off the overclock itself
+
+So in general, the 'oc-me' program will dynamically overclock the system, the 'collatz-kit' will start executing and then the 'cpulimit-simplified' will lock that kit to the overclocked cycles created.
+
+SubNote 1: oc-me is a stub that does very little right now. As I don't want to actually build a weapon (given I will be open sourcing this work), this is simply a stub to show HOW the offeinsive tool would work.  I am leaving it in the source tree as I may be required to implement it for milestone 4 (at wich time I will back propogate it to here as well)
+
+SubNote 2: The script ./clb_out/kit-runner.sh does not currently do anything useful. It does show in comments how to run the code, but the better place to start is the 'M3 - How to run clb_offensive on Android' file.
+
+=========================================
+In depth on the collatz-kit program
+=========================================
+This program simply starts computing random collatz sequences and prints them to the screen.  Nothing special here, just a sample "kit/implant" designed to use a large percentage of processor time.
+
+If you want to see more output and know what's going on, please open the source and uncomment the lines that printf to the screen. WARNING: This will generate a LOT of output to the screen and drastically slow the kit down.
+
+=========================================
+In depth on the cpulimit-simplified program
+=========================================
+This is a modified version of the open source cpulimit program. The main changes I made were implementing Android and ARM support. I will eventually push my changes back up to the main open source program (once this contract is complete).
+
+=========================================
+In depth on the oc-me program
+=========================================
+This program is designed to talk directly to the kernel shim and overclock the processor. This is currently a stub as weaponization is not the point of this research.
+
+=========================================
+In depth on the clb_out staging folder
+=========================================
+Run all the things here. Once the compile is done:
+	* make clean; make; make stage-kit;
+
+(commented out for a reason - see notes)
+# Just jump into the ./kit-runner.sh and run it.  
+# The script has a variable that defines how much to overclock the system (and thus how much to limit the
+# implant), currently set to 10%.
+
+# The script simply stages everything and starts all the programs in sequence.
+
+=========================================
+Android build process:
+=========================================
+
+PreReq: Your machine will need to have the Android NDK installed and setup
+	(Please see the 'M3 - NDK Setup for CLB build' file)
+
+PreReq: You will need to modify my custom Makefiles to point to your path for the NDK gcc instance
+
+Simply go into the clb_offensive_android base dir and run the Makefile there.
+
+$ make 					<- This will simply build all the sub programs
+$ make stage-kit		<- This will copy all the built programs to the staging dir
+
+$ make clean 			<- This will clean the built programs
+$ make clean-kit 		<- This will clean the staging directory
+=========================================
+
+
+
+=========================================
+=========================================
+Just my favorite TOP output lines :)
+=========================================
+root@yuga:/ # top -m 2                                                       
+
+User 92%, System 2%, IOW 0%, IRQ 0%
+User 304 + Nice 0 + Sys 8 + Idle 16 + IOW 0 + IRQ 0 + SIRQ 1 = 329
+
+  PID PR CPU% S  #THR     VSS     RSS PCY UID      Name
+ 9948  1  91% R     1    652K     72K     root     /data/data/com.omg-pwnies.clb/collatz-kit
+ 9951  0   2% R     1   1232K    536K     root     top
+
+
+
+User 276%, System 7%, IOW 38347877%, IRQ 8%
+User 310 + Nice 0 + Sys 8 + Idle -165 + IOW -50 + IRQ 0 + SIRQ 9 = 112
+
+  PID PR CPU% S  #THR     VSS     RSS PCY UID      Name
+ 9948  1 276% R     1    652K     72K     root     /data/data/com.omg-pwnies.clb/collatz-kit
+ 9951  0   8% R     1   1236K    552K     root     top
+
+
+
+User 50%, System 1%, IOW 0%, IRQ 1%
+User 316 + Nice 0 + Sys 9 + Idle 286 + IOW 0 + IRQ 0 + SIRQ 9 = 620
+
+  PID PR CPU% S  #THR     VSS     RSS PCY UID      Name
+ 9948  1  50% R     1    652K     72K     root     /data/data/com.omg-pwnies.clb/collatz-kit
+ 9951  0   1% R     1   1236K    552K     root     top
